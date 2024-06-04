@@ -1,4 +1,5 @@
 import torch
+import re
 from loguru import logger
 from torch import Tensor
 
@@ -102,7 +103,20 @@ class ModelTester:
 
         self.anchor2box = AnchorBoxConverter(cfg, device)
         self.nms = cfg.task.nms
+        self.labels = self.read_label_file(cfg.task.labels)
         self.save_path = save_path
+
+    def read_label_file(self, file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        ret = {}
+        for row_number, content in enumerate(lines):
+            pair = re.split(r"[:\s]+", content.strip(), maxsplit=1)
+            if len(pair) == 2 and pair[0].strip().isdigit():
+                ret[int(pair[0])] = pair[1].strip()
+            else:
+                ret[row_number] = content.strip()
+        return ret
 
     def solve(self, dataloader: StreamDataLoader):
         logger.info("👀 Start Inference!")
@@ -115,7 +129,8 @@ class ModelTester:
                 predict, _ = self.anchor2box(raw_output[0][3:], with_logits=True)
                 nms_out = bbox_nms(predict, self.nms)
                 draw_bboxes(
-                    images[0], nms_out[0], scaled_bbox=False, save_path=self.save_path, save_name=f"frame{idx:03d}.png"
+                    images[0], nms_out[0], scaled_bbox=False, save_path=self.save_path, save_name=f"frame{idx:03d}.png",
+                    labels=self.labels
                 )
         except KeyboardInterrupt:
             logger.error("Interrupted by user")

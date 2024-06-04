@@ -1,5 +1,5 @@
 import os
-from typing import List, Union
+from typing import List, Text, Union
 
 import numpy as np
 import torch
@@ -15,13 +15,14 @@ def draw_bboxes(
     scaled_bbox: bool = True,
     save_path: str = "",
     save_name: str = "visualize.png",
+    labels: List[str],
 ):
     """
     Draw bounding boxes on an image.
 
     Args:
     - img (PIL Image or torch.Tensor): Image on which to draw the bounding boxes.
-    - bboxes (List of Lists/Tensors): Bounding boxes with [class_id, x_min, y_min, x_max, y_max],
+    - bboxes (List of Lists/Tensors): Bounding boxes with [class_id, x_min, y_min, x_max, y_max, confidence_score],
       where coordinates are normalized [0, 1].
     """
     # Convert tensor image to PIL Image if necessary
@@ -34,10 +35,10 @@ def draw_bboxes(
 
     draw = ImageDraw.Draw(img)
     width, height = img.size
-    font = ImageFont.load_default(30)
+    font = ImageFont.load_default()
 
     for bbox in bboxes:
-        class_id, x_min, y_min, x_max, y_max = bbox
+        class_id, x_min, y_min, x_max, y_max, confidence_score = bbox
         if scaled_bbox:
             x_min = x_min * width
             x_max = x_max * width
@@ -45,7 +46,18 @@ def draw_bboxes(
             y_max = y_max * height
         shape = [(x_min, y_min), (x_max, y_max)]
         draw.rectangle(shape, outline="red", width=3)
-        draw.text((x_min, y_min), str(int(class_id)), font=font, fill="blue")
+
+        if (labels):
+            text = f"{labels.get(int(class_id), int(class_id))}: {confidence_score:.2f}"
+        else:
+            text = f"{int(class_id)}: {confidence_score:.2f}"
+
+        left, top, right, bottom = font.getbbox(text)
+        text_width, text_height = (right - left, bottom - top)
+
+        text_location = (x_min, y_min - text_height)
+        draw.rectangle([text_location, (x_min + text_width, y_min)], fill="red")
+        draw.text(text_location, text, font=font, fill="white")
 
     save_image_path = os.path.join(save_path, save_name)
     img.save(save_image_path)  # Save the image with annotations

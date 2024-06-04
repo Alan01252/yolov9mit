@@ -292,13 +292,13 @@ class BoxMatcher:
 
 
 def bbox_nms(predicts: Tensor, nms_cfg: NMSConfig):
-    # TODO change function to class or set 80 to class_num instead of a number
     cls_dist, bbox = predicts.split([80, 4], dim=-1)
 
     # filter class by confidence
     cls_val, cls_idx = cls_dist.max(dim=-1, keepdim=True)
     valid_mask = cls_val > nms_cfg.min_confidence
     valid_cls = cls_idx[valid_mask].float()
+    valid_confidence = cls_val[valid_mask].squeeze(dim=-1)  # Ensure valid_confidence is the correct dimension
     valid_box = bbox[valid_mask.repeat(1, 1, 4)].view(-1, 4)
 
     batch_idx, *_ = torch.where(valid_mask)
@@ -307,7 +307,12 @@ def bbox_nms(predicts: Tensor, nms_cfg: NMSConfig):
     for idx in range(predicts.size(0)):
         instance_idx = nms_idx[idx == batch_idx[nms_idx]]
 
-        predict_nms = torch.cat([valid_cls[instance_idx][:, None], valid_box[instance_idx]], dim=-1)
+        # Ensure valid_cls and valid_confidence have the same number of dimensions before concatenation
+        valid_cls_expanded = valid_cls[instance_idx].view(-1, 1)
+        valid_confidence_expanded = valid_confidence[instance_idx].view(-1, 1)
+
+        predict_nms = torch.cat([valid_cls_expanded, valid_box[instance_idx], valid_confidence_expanded], dim=-1)
 
         predicts_nms.append(predict_nms)
     return predicts_nms
+

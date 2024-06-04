@@ -114,6 +114,7 @@ class NMSConfig:
 class InferenceConfig:
     task: str
     source: Union[str, int]
+    labels: str
     nms: NMSConfig
 
 
@@ -127,6 +128,7 @@ class Config:
     cpu_num: int
 
     class_num: int
+    class_label_file: str
     image_size: List[int]
 
     out_path: str

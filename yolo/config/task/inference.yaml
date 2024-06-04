@@ -1,5 +1,6 @@
 task: inference
 source: demo/images/inference/image.png
+labels: demo/labels/coco_labels.txt
 data:
   batch_size: 16
   shuffle: False
